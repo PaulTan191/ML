@@ -10,7 +10,7 @@ Simple collection of ML projects.
 
 Stock.py should contain methods and attributes which are suitable to be instantiated in a broader survey of multiple stocks.
 
-### Firstly: implement basic EDA methods.
+### Before going any further: implement basic EDA methods.
 
 1. Refine implementation of LSTM model by first learning properly the deatils of RNN and afterwards LSTM. In particular the use of windows in the input data should be understood and if applicable implemented. This should tie into batch sizes. 
 2. Consider gathering statistics on a large dataset of stocks, and explore this bulk dataset. 
