@@ -6,7 +6,7 @@ Simple collection of ML projects.
 3. Stock.py contains the classes defined for use in the notebook
 4. Model.py contains a subclass for a simple (perhaps naive implementation) of an LSTM model.
 
-## Todo and Ideas
+## Stock Prediction Project: Todo and Ideas
 
 Stock.py should contain methods and attributes which are suitable to be instantiated in a broader survey of multiple stocks.
 
