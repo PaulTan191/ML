@@ -31,6 +31,8 @@ class Stock:
         Name of stock
     theta : [int]
         Hyperparameters of the LSTM model; number of units in each hidden layer. The length of theta is the number of hidden layers. Where hidden layers here excludes the output layer. 
+    histories : [[int]] 
+        List of N history stock price histories of size (lookbacks, f(lookbacks)). Where f(lookbacks) = lookbacks * lookback_interval indicates that the lists in the array are of variable size.
     
     Methods
     -------
@@ -38,15 +40,17 @@ class Stock:
         Trains multiple models and makes stock predictions.
     plot_losses(self,ax = None, title = "Loss",xlabel= "Epochs",ylabel="MSE",in_figsize = (5,5)):
         Plots the loss functions
-        
+    plot_predictions(self,ax = None, title = "Model Predictions: ",xlabel= "Timestep",ylabel="Standardized Price",in_figsize = (5,5)):
+        Plots the predictions of the models for each weight instantiation and for each specified training subsets of the historical price.
     
     
     
     """
-    def __init__(self, history, N, stockname, lookahead = 1, epochs = 1000,theta = [64], lookbacks = 5):
+    def __init__(self, history, N, stockname, lookahead = 50, epochs = 1000,theta = [64], lookbacks = 5, lookback_interval = 10,batch_size = 50):
 
 
       # Require lookbacks < len(history)
+        self.batch_size = batch_size
         self.predictions = np.zeros((lookbacks,N,len(history)+lookahead))
         self.losses = np.zeros((lookbacks,N,epochs))
 
@@ -59,28 +63,33 @@ class Stock:
         self.lookahead = lookahead
         self.N = N
         self.stockname = stockname
-        
-        lookbacklst = range(lookbacks)
-        self.histories = [self.history[:,i:,:] for i in lookbacklst]
+        self.lookback_interval = lookback_interval
+        self.histories = [self.history[:,self.lookback_interval * i:,:] for i in range(lookbacks)]
 
         
         
-    # TODO, possibly make subset lookback validation optional for interface clarity. 
+    # TODO, implement a validation option which chooses to look at subsets of the stock price history.
+    # e.g, predicts models looking back {15,14,13,12,11,10} time steps in the past. 
+    # Motivation for this loosely said: we do not know how far back the relevent data is   
     def run(self):
+        counter = 0
         for i in range(len(self.histories)):
             for j in range(self.N):
+                counter += 1
                 model = Model.Model(theta = [256])
                 
                 model.compile(loss =tf.keras.losses.MeanSquaredError(),optimizer = tf.keras.optimizers.Adam())
 
                 
-                train = model.fit(self.input[:,i:,:]-i,self.histories[i],epochs = self.epochs, verbose = 0)
+                train = model.fit(self.input[:,self.lookback_interval*i:,:]-i*self.lookback_interval,self.histories[i],epochs = self.epochs, batch_size = self.batch_size,verbose = 0)
                 
                 n =  len(self.histories[i][0,:,0])+self.lookahead
                 
                 future = np.linspace(0,n,n).reshape(1,n,1)
-                self.predictions[i,j,i:] = model.predict(future)[0,:,0]
+                self.predictions[i,j,self.lookback_interval*i:] = model.predict(future)[0,:,0]
                 self.losses[i,j] = train.history['loss']
+
+                print("Model " + str(counter) + " of " + str(self.N*len(self.histories)) + " trained")
             
             
     
@@ -96,16 +105,17 @@ class Stock:
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
         
-    # TODO, add clear labels and informative colouring.
-    def plot_predictions(self,ax = None, title = "Model Predictions: ",xlabel= "Timestep",ylabel="Standardized Price",in_figsize = (5,5)):
+    # TODO, clean up and add input data.
+    def plot_predictions(self,ax = None, title = "Model Predictions: ",xlabel= "Timestep",ylabel="Standardized Price",in_figsize = (5,5),xlim = (None,None)):
         if ax is None:
             fig, ax = plt.subplots(1,1,figsize=in_figsize)
 
         for i in range(len(self.histories)):
           for j in range(self.N):
             ax.plot(self.predictions[i,j][:-self.lookahead],'-k')
-            ax.plot(np.linspace(len(self.history[0,:,0])-1,len(self.history[0,:,0]),2),self.predictions[i,j][-self.lookahead-1:])
+            ax.plot(np.linspace(len(self.history[0,:,0])-1,len(self.history[0,:,0])+self.lookahead,self.lookahead+1),self.predictions[i,j][-self.lookahead-1:])
         ax.plot(self.history[0,:,0],'r')
         ax.set_title(title+ self.stockname)
+        ax.set_xlim(xlim)
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
