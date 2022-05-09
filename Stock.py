@@ -1,16 +1,9 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+import Model
 
-## TODO, write ML class which takes hyper-parameters 
 ## TODO, implement a general LSTM model , using windows.
-model = tf.keras.Sequential([
-    tf.keras.layers.LSTM(256,return_sequences = True),
-    tf.keras.layers.Dense(units = 1)
-])
-
-model.compile(loss =tf.keras.losses.MeanSquaredError(),optimizer = tf.keras.optimizers.Adam())
-
 
 class Stock:
     
@@ -36,6 +29,8 @@ class Stock:
         Training Losses
     stockname : String
         Name of stock
+    theta : [int]
+        Hyperparameters of the LSTM model; number of units in each hidden layer. The length of theta is the number of hidden layers. Where hidden layers here excludes the output layer. 
     
     Methods
     -------
@@ -48,60 +43,69 @@ class Stock:
     
     
     """
-    def __init__(self, history, N, stockname, lookahead = 1, epochs = 1000):
+    def __init__(self, history, N, stockname, lookahead = 1, epochs = 1000,theta = [64], lookbacks = 5):
 
-        self.predictions = []
+
+      # Require lookbacks < len(history)
+        self.predictions = np.zeros((lookbacks,N,len(history)+lookahead))
+        self.losses = np.zeros((lookbacks,N,epochs))
+
+        
         self.input = np.linspace(0,len(history),len(history)).reshape(1,len(history),1)
         # Standardizing the price, for training purposes.
         self.history = ((history - history.mean())/history.std()).reshape(1,len(history),1)
         self.epochs = epochs
-        self.losses = []
+        
         self.lookahead = lookahead
         self.N = N
         self.stockname = stockname
         
+        lookbacklst = range(lookbacks)
+        self.histories = [self.history[:,i:,:] for i in lookbacklst]
+
         
-    # TODO, implement a validation option which chooses to look at subsets of the stock price history.
-    # e.g, predicts models looking back {15,14,13,12,11,10} time steps in the past. 
-    # Motivation for this loosely said: we do not know how far back the relevent data is   
+        
+    # TODO, possibly make subset lookback validation optional for interface clarity. 
     def run(self):
-        for i in range(self.N):
-            model = tf.keras.Sequential([
-                tf.keras.layers.LSTM(256,return_sequences = True),
-                tf.keras.layers.Dense(units = 1)
-            ]) ## TODO, replace this with more efficient initialization
+        for i in range(len(self.histories)):
+            for j in range(self.N):
+                model = Model.Model(theta = [256])
+                
+                model.compile(loss =tf.keras.losses.MeanSquaredError(),optimizer = tf.keras.optimizers.Adam())
 
-            model.compile(loss =tf.keras.losses.MeanSquaredError(),optimizer = tf.keras.optimizers.Adam())
-
-            
-            train = model.fit(self.input,self.history,epochs = self.epochs, verbose = 0)
-            
-            n =  len(self.history[0,:,0])+self.lookahead
-            
-            future = np.linspace(0,n,n).reshape(1,n,1)
-            self.predictions.append(model.predict(future))
-            self.losses.append(train.history['loss'])
+                
+                train = model.fit(self.input[:,i:,:]-i,self.histories[i],epochs = self.epochs, verbose = 0)
+                
+                n =  len(self.histories[i][0,:,0])+self.lookahead
+                
+                future = np.linspace(0,n,n).reshape(1,n,1)
+                self.predictions[i,j,i:] = model.predict(future)[0,:,0]
+                self.losses[i,j] = train.history['loss']
             
             
     
     def plot_losses(self,ax = None, title = "Loss",xlabel= "Epochs",ylabel="MSE",in_figsize = (5,5),log = True):
         if ax is None:
             fig, ax = plt.subplots(1,1,figsize=in_figsize)
-        for elm in self.losses:
-            ax.plot(elm)
+        for i in range(len(self.histories)):
+          for j in range(self.N):
+            ax.plot(self.losses[i,j])
         if log:
             ax.set_yscale("log")
         ax.set_title(title)
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
         
-    # TODO, clean up and add input data.
+    # TODO, add clear labels and informative colouring.
     def plot_predictions(self,ax = None, title = "Model Predictions: ",xlabel= "Timestep",ylabel="Standardized Price",in_figsize = (5,5)):
         if ax is None:
             fig, ax = plt.subplots(1,1,figsize=in_figsize)
-        for elm in self.predictions:
-            ax.plot(elm[0,:-self.lookahead,0],'-k')
-            ax.plot(np.linspace(len(self.history[0,:,0])-1,len(self.history[0,:,0]),self.lookahead+1),elm[0,-self.lookahead-1:,0])
+
+        for i in range(len(self.histories)):
+          for j in range(self.N):
+            ax.plot(self.predictions[i,j][:-self.lookahead],'-k')
+            ax.plot(np.linspace(len(self.history[0,:,0])-1,len(self.history[0,:,0]),2),self.predictions[i,j][-self.lookahead-1:])
+        ax.plot(self.history[0,:,0],'r')
         ax.set_title(title+ self.stockname)
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
