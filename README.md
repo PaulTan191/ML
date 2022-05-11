@@ -12,7 +12,7 @@ Stock.py should contain methods and attributes which are suitable to be instanti
 
 
 
-1. Refine implementation of LSTM model by first learning properly the deatils of RNN and afterwards LSTM. In particular the use of windows in the input data should be understood and if applicable implemented. This should tie into batch sizes. 
+1. Refine implementation of LSTM model by first learning properly the deatils of RNN and afterwards LSTM. It seems that the current model is unconditional, dig into this. 
 2. Consider gathering statistics on a large dataset of stocks, and explore this bulk dataset. 
 4. Evaluate the effect of using log returns against different metrics.
 5. As EDA, plot the running average/convolution of stock prices/log returns; as a form of denoising, evaluate the effectiveness of modelling a running average instead of daily metrics. By denoising, model complexity should decrease, too. Consider that a non RNN model may be sufficient for such a denoised timeseries.
