@@ -6,17 +6,12 @@ class Model(tf.keras.Model):
     """
     A class to contain a simple tensor flow LSTM model. Inherits from tf.keras.Model class.
     
-    In the future, this class should be expanded to contain a model which takes in multiple 
-    inputs, and uses a more complex architecture.
     
     
     ...
     Attributes
     ----------
-    inp_dim : integer
-        Dimension of the feature space
-    out_dim : integer
-        Dimension of the output space
+
     theta : [int]
         Hyperparameters of the LSTM model; number of units in each hidden layer. The length of theta is the number of hidden layers. Where hidden layers here excludes the output layer. 
     
@@ -36,8 +31,8 @@ class Model(tf.keras.Model):
 
     
     def call(self, inputs):
-        x = self.hidden_layers[0](inputs)
-        for i in range(len(self.hidden_layers)-1):
+        x = inputs
+        for i in range(len(self.hidden_layers)):
             x = self.hidden_layers[i](x)
         return self.output_layer(x)
     
